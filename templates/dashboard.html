@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Chart Analysis</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f8f9fa; 
+            min-height: 100vh;
+        }
+        .header { 
+            background: #2d3748; 
+            color: white; 
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 24px; }
+        .user-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+        }
+        .role-badge {
+            background: #667eea;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .btn-logout { 
+            background: #e53e3e; 
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .btn-logout:hover { background: #c53030; }
+        .container { 
+            max-width: 1000px; 
+            margin: 40px auto; 
+            padding: 0 20px;
+        }
+        .welcome {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .welcome h2 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .welcome p {
+            color: #666;
+            font-size: 16px;
+        }
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .option-card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .option-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .option-card h3 { 
+            color: #2d3748; 
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+        .option-card p { 
+            color: #666; 
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        .btn { 
+            display: inline-block; 
+            padding: 12px 30px; 
+            background: #667eea; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #5a67d8; }
+        .cv-card { border-top: 4px solid #38a169; }
+        .fractal-card { border-top: 4px solid #d69e2e; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Chart Analysis System</h1>
+        <div class="user-info">
+            <span>Welcome, {{ user.username }}</span>
+            <span class="role-badge">{{ user.role }}</span>
+            <a href="/logout" class="btn-logout">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="welcome">
+            <h2>Choose Your Analysis Method</h2>
+            <p>Select the type of chart analysis you want to perform</p>
+        </div>
+        
+        <div class="options">
+            <div class="option-card cv-card">
+                <div class="option-icon">🎬</div>
+                <h3>Computer Vision Analysis</h3>
+                <p>Upload a video and analyze chart similarities using computer vision and AI technology</p>
+                <a href="/computer-vision" class="btn">Start CV Analysis</a>
+            </div>
+            
+            <div class="option-card fractal-card">
+                <div class="option-icon">📈</div>
+                <h3>Yearly Chart Fractal</h3>
+                <p>Compare 2025 charts with historical data from 2009-2024 to find patterns and similarities</p>
+                <a href="/yearly-fractal" class="btn">View Yearly Analysis</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
