@@ -1,0 +1,126 @@
+{
+  "timestamp": 1753838071.3572876,
+  "total_comparisons": 16,
+  "successful_comparisons": 15,
+  "analysis_type": "gpt_vision_yearly_improved",
+  "summary": {
+    "mean_similarity": 0.43000000000000005,
+    "max_similarity": 0.85,
+    "min_similarity": 0.15,
+    "most_similar_year": 2019
+  },
+  "results": [
+    {
+      "year": 2019,
+      "similarity_score": 0.85,
+      "analysis": "Similarity score: 0.850 (85.0%)",
+      "reasoning": "Score: 85",
+      "timestamp": 1753838048.8291397
+    },
+    {
+      "year": 2020,
+      "similarity_score": 0.85,
+      "analysis": "Similarity score: 0.850 (85.0%)",
+      "reasoning": "Score: 85",
+      "timestamp": 1753838052.0727723
+    },
+    {
+      "year": 2009,
+      "similarity_score": 0.65,
+      "analysis": "Similarity score: 0.650 (65.0%)",
+      "reasoning": "Score: 65",
+      "timestamp": 1753838009.700959
+    },
+    {
+      "year": 2010,
+      "similarity_score": 0.65,
+      "analysis": "Similarity score: 0.650 (65.0%)",
+      "reasoning": "Score: 65",
+      "timestamp": 1753838015.1130693
+    },
+    {
+      "year": 2011,
+      "similarity_score": 0.65,
+      "analysis": "Similarity score: 0.650 (65.0%)",
+      "reasoning": "Score: 65",
+      "timestamp": 1753838018.767801
+    },
+    {
+      "year": 2024,
+      "similarity_score": 0.65,
+      "analysis": "Similarity score: 0.650 (65.0%)",
+      "reasoning": "Score: 65",
+      "timestamp": 1753838069.85394
+    },
+    {
+      "year": 2017,
+      "similarity_score": 0.45,
+      "analysis": "Similarity score: 0.450 (45.0%)",
+      "reasoning": "Score: 45",
+      "timestamp": 1753838042.0794756
+    },
+    {
+      "year": 2012,
+      "similarity_score": 0.25,
+      "analysis": "Similarity score: 0.250 (25.0%)",
+      "reasoning": "Score: 25",
+      "timestamp": 1753838023.1190894
+    },
+    {
+      "year": 2016,
+      "similarity_score": 0.25,
+      "analysis": "Similarity score: 0.250 (25.0%)",
+      "reasoning": "Score: 25",
+      "timestamp": 1753838037.936365
+    },
+    {
+      "year": 2021,
+      "similarity_score": 0.25,
+      "analysis": "Similarity score: 0.250 (25.0%)",
+      "reasoning": "Score: 25",
+      "timestamp": 1753838060.4150727
+    },
+    {
+      "year": 2022,
+      "similarity_score": 0.25,
+      "analysis": "Similarity score: 0.250 (25.0%)",
+      "reasoning": "Score: 25",
+      "timestamp": 1753838063.5098734
+    },
+    {
+      "year": 2023,
+      "similarity_score": 0.25,
+      "analysis": "Similarity score: 0.250 (25.0%)",
+      "reasoning": "Score: 25",
+      "timestamp": 1753838066.4759345
+    },
+    {
+      "year": 2014,
+      "similarity_score": 0.15,
+      "analysis": "Similarity score: 0.150 (15.0%)",
+      "reasoning": "Score: 15",
+      "timestamp": 1753838031.6167326
+    },
+    {
+      "year": 2015,
+      "similarity_score": 0.15,
+      "analysis": "Similarity score: 0.150 (15.0%)",
+      "reasoning": "Score: 15",
+      "timestamp": 1753838034.609183
+    },
+    {
+      "year": 2018,
+      "similarity_score": 0.15,
+      "analysis": "Similarity score: 0.150 (15.0%)",
+      "reasoning": "Score: 15",
+      "timestamp": 1753838045.671463
+    },
+    {
+      "year": 2013,
+      "similarity_score": 0.0,
+      "analysis": "Similarity score: 0.000 (0.0%)",
+      "reasoning": "Score: 0",
+      "timestamp": 1753838027.5434382
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 FastAPI Chart Analysis System
-Main API file that integrates computer vision and GPT vision analysis
+Main API file that integrates computer vision and improved GPT vision analysis
 """
 
 from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, HTTPException, status, Cookie
@@ -19,10 +19,11 @@ from typing import Optional
 import hashlib
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import cv2
 
 # Import our analysis modules
 from src.chart_similarity_cv import find_most_similar_charts_in_video, prepare_results_for_json
-from src.gpt_vision import GPTVisionAnalyzer
+from check import GPTVisionAnalyzer  # Import the improved GPT Vision Analyzer
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -47,6 +48,7 @@ os.makedirs("results", exist_ok=True)
 
 # OpenAI setup
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 # Simple user database (in production, use proper database)
 USERS = {
     "admin": {"password": "admin123", "role": "admin"},
@@ -55,6 +57,13 @@ USERS = {
 
 # Thread pool for background tasks
 executor = ThreadPoolExecutor(max_workers=2)
+
+# Analysis progress tracking
+analysis_progress = {}
+
+def update_progress(task_id: str, progress: int):
+    """Update analysis progress"""
+    analysis_progress[task_id] = progress
 
 # Authentication functions
 def get_auth_token_from_cookie(auth_token: Optional[str] = Cookie(None)):
@@ -84,13 +93,6 @@ def admin_required(user=Depends(get_current_user)):
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
-
-# Analysis progress tracking
-analysis_progress = {}
-
-def update_progress(task_id: str, progress: int):
-    """Update analysis progress"""
-    analysis_progress[task_id] = progress
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
@@ -224,28 +226,130 @@ async def run_cv_analysis(video_path: str, task_id: str, fps: float):
         logger.error(f"CV analysis failed for {task_id}: {e}")
         analysis_progress[task_id] = -1  # Error state
 
+def extract_frames_from_video(video_path: str, output_dir: str, fps: float = 1.0):
+    """Extract frames from video for GPT analysis"""
+    os.makedirs(output_dir, exist_ok=True)
+    
+    cap = cv2.VideoCapture(video_path)
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_interval = int(video_fps / fps)
+    
+    frame_count = 0
+    saved_count = 0
+    frames = []
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        if frame_count % frame_interval == 0:
+            frame_filename = f"frame_{saved_count:06d}.png"
+            frame_path = os.path.join(output_dir, frame_filename)
+            cv2.imwrite(frame_path, frame)
+            frames.append(frame_path)
+            saved_count += 1
+        
+        frame_count += 1
+    
+    cap.release()
+    return frames
+
 async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
-    """Run GPT vision analysis in background"""
+    """Run GPT vision analysis in background using improved analyzer"""
     try:
         if not OPENAI_API_KEY:
             raise Exception("OpenAI API key not configured")
         
         output_dir = f"results/{task_id}_gpt"
+        frames_dir = f"{output_dir}/frames"
         
-        def progress_callback(progress):
-            update_progress(task_id, progress)
-        
-        # Run GPT analysis
-        analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
+        # Extract frames from video
         loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(
+        frames = await loop.run_in_executor(
             executor,
-            analyzer.analyze_video,
+            extract_frames_from_video,
             video_path,
-            output_dir,
-            fps,
-            progress_callback
+            frames_dir,
+            fps
         )
+        
+        update_progress(task_id, 20)
+        
+        # Initialize the improved GPT Vision Analyzer
+        analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
+        
+        # Analyze each frame against historical charts
+        results = []
+        total_frames = len(frames)
+        
+        for i, frame_path in enumerate(frames):
+            try:
+                # Run analysis for this frame
+                frame_results = await loop.run_in_executor(
+                    executor,
+                    analyzer.analyze_yearly_charts,
+                    frame_path,
+                    "historical"
+                )
+                
+                # Add frame info to results
+                frame_results['frame_number'] = i
+                frame_results['frame_path'] = frame_path
+                frame_results['timestamp_in_video'] = i / fps
+                
+                results.append(frame_results)
+                
+                # Update progress
+                progress = 20 + int((i + 1) / total_frames * 75)
+                update_progress(task_id, progress)
+                
+                logger.info(f"Analyzed frame {i+1}/{total_frames} for task {task_id}")
+                
+            except Exception as e:
+                logger.error(f"Error analyzing frame {i}: {e}")
+                continue
+        
+        # Compile final results
+        final_results = {
+            "timestamp": time.time(),
+            "task_id": task_id,
+            "video_path": video_path,
+            "total_frames_analyzed": len(results),
+            "fps": fps,
+            "analysis_type": "gpt_vision_improved",
+            "frames": results
+        }
+        
+        # Find overall best matches
+        if results:
+            # Aggregate scores by year across all frames
+            year_scores = {}
+            for frame_result in results:
+                if 'results' in frame_result:
+                    for year_data in frame_result['results']:
+                        year = year_data['year']
+                        score = year_data['similarity_score']
+                        if year not in year_scores:
+                            year_scores[year] = []
+                        year_scores[year].append(score)
+            
+            # Calculate average scores
+            avg_scores = {}
+            for year, scores in year_scores.items():
+                avg_scores[year] = sum(scores) / len(scores)
+            
+            # Sort by average score
+            best_matches = sorted(avg_scores.items(), key=lambda x: x[1], reverse=True)
+            final_results['best_overall_matches'] = [
+                {"year": year, "avg_similarity": score} 
+                for year, score in best_matches[:10]
+            ]
+        
+        # Save results
+        results_file = f"results/{task_id}_gpt_vision_results.json"
+        with open(results_file, 'w') as f:
+            json.dump(final_results, f, indent=2)
         
         analysis_progress[task_id] = 100
         logger.info(f"GPT analysis completed for {task_id}")
@@ -354,14 +458,11 @@ async def run_yearly_analysis(
         task_id = f"yearly_{int(time.time())}"
         analysis_progress[task_id] = 0
         
-        if analysis_type == "gpt":
-            asyncio.create_task(run_yearly_gpt_analysis(task_id))
-        else:
-            asyncio.create_task(run_yearly_cv_analysis(task_id))
+        asyncio.create_task(run_yearly_gpt_analysis(task_id))
         
         return JSONResponse({
             "status": "success", 
-            "message": f"Yearly {analysis_type.upper()} analysis started",
+            "message": f"Yearly GPT analysis started",
             "task_id": task_id
         })
         
@@ -370,16 +471,19 @@ async def run_yearly_analysis(
         raise HTTPException(status_code=500, detail=str(e))
 
 async def run_yearly_gpt_analysis(task_id: str):
-    """Run yearly GPT analysis in background"""
+    """Run yearly GPT analysis in background using improved analyzer"""
     try:
+        # Use the improved GPT Vision Analyzer from check.py
         analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
         loop = asyncio.get_event_loop()
         
+        # Use the improved analyze_yearly_charts method with retry logic
         results = await loop.run_in_executor(
             executor,
             analyzer.analyze_yearly_charts,
             "uploads/2025.png",
-            "historical"
+            "historical",
+            3  # max_retries parameter
         )
         
         # Save results
@@ -387,40 +491,10 @@ async def run_yearly_gpt_analysis(task_id: str):
             json.dump(results, f, indent=2)
         
         analysis_progress[task_id] = 100
-        logger.info(f"Yearly GPT analysis completed")
+        logger.info(f"Yearly GPT analysis completed with {results['successful_comparisons']} successful comparisons")
         
     except Exception as e:
         logger.error(f"Yearly GPT analysis failed: {e}")
-        analysis_progress[task_id] = -1
-
-async def run_yearly_cv_analysis(task_id: str):
-    """Run yearly CV analysis in background"""
-    try:
-        # Implement CV-based yearly analysis here
-        # For now, using a placeholder
-        from gpt_vision import GPTVisionAnalyzer
-        
-        # You can implement CV-based comparison here
-        # For now, falling back to GPT analysis
-        analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
-        loop = asyncio.get_event_loop()
-        
-        results = await loop.run_in_executor(
-            executor,
-            analyzer.analyze_yearly_charts,
-            "uploads/2025.png",
-            "historical"
-        )
-        
-        # Save results
-        with open("results/yearly_analysis.json", "w") as f:
-            json.dump(results, f, indent=2)
-        
-        analysis_progress[task_id] = 100
-        logger.info(f"Yearly CV analysis completed")
-        
-    except Exception as e:
-        logger.error(f"Yearly CV analysis failed: {e}")
         analysis_progress[task_id] = -1
 
 @app.get("/yearly-progress/{task_id}")
@@ -449,7 +523,8 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": time.time(),
-        "openai_configured": bool(OPENAI_API_KEY)
+        "openai_configured": bool(OPENAI_API_KEY),
+        "gpt_vision_version": "improved"
     }
 
 # Static file serving for results
@@ -462,9 +537,6 @@ async def serve_results(path: str, user=Depends(get_current_user)):
         return FileResponse(file_path)
     else:
         raise HTTPException(status_code=404, detail="File not found")
-    
-
-# Add these routes after the existing /results/ route
 
 @app.get("/uploads/{filename}")
 async def serve_uploads(filename: str, user=Depends(get_current_user)):
@@ -498,7 +570,7 @@ if __name__ == "__main__":
     
     print("🚀 Starting Chart Analysis System...")
     print("📊 Computer Vision: Available")
-    print("🤖 GPT Vision: Available" if OPENAI_API_KEY else "🤖 GPT Vision: Disabled (no API key)")
+    print("🤖 GPT Vision: Available (Improved Version)" if OPENAI_API_KEY else "🤖 GPT Vision: Disabled (no API key)")
     print("🌐 Server will be available at: http://localhost:8000")
     
     uvicorn.run(app, host="0.0.0.0", port=8000)
