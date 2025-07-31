@@ -23,14 +23,14 @@ import cv2
 
 # Import our analysis modules
 from src.chart_similarity_cv import find_most_similar_charts_in_video, prepare_results_for_json
-from check import GPTVisionAnalyzer  # Import the improved GPT Vision Analyzer
+from check import GPTVisionAnalyzer, extract_frames_with_consistent_processing  # Import directly from check.py
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Chart Analysis System")
@@ -169,6 +169,8 @@ async def upload_video(
         video_filename = f"{task_id}.mp4"
         video_path = f"uploads/{video_filename}"
         
+        logger.info(f"Uploading video: {file.filename} -> {video_path}")
+        
         # Save uploaded video
         with open(video_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -203,6 +205,8 @@ async def run_cv_analysis(video_path: str, task_id: str, fps: float):
         def progress_callback(progress):
             update_progress(task_id, progress)
         
+        logger.info(f"Starting CV analysis for task {task_id}")
+        
         # Run CV analysis
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(
@@ -226,49 +230,21 @@ async def run_cv_analysis(video_path: str, task_id: str, fps: float):
         logger.error(f"CV analysis failed for {task_id}: {e}")
         analysis_progress[task_id] = -1  # Error state
 
-def extract_frames_from_video(video_path: str, output_dir: str, fps: float = 1.0):
-    """Extract frames from video for GPT analysis"""
-    os.makedirs(output_dir, exist_ok=True)
-    
-    cap = cv2.VideoCapture(video_path)
-    video_fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_interval = int(video_fps / fps)
-    
-    frame_count = 0
-    saved_count = 0
-    frames = []
-    
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        
-        if frame_count % frame_interval == 0:
-            frame_filename = f"frame_{saved_count:06d}.png"
-            frame_path = os.path.join(output_dir, frame_filename)
-            cv2.imwrite(frame_path, frame)
-            frames.append(frame_path)
-            saved_count += 1
-        
-        frame_count += 1
-    
-    cap.release()
-    return frames
-
 async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
-    """Run GPT vision analysis in background using improved analyzer"""
+    """Run GPT vision analysis in background using functions from check.py"""
     try:
         if not OPENAI_API_KEY:
             raise Exception("OpenAI API key not configured")
         
+        logger.info(f"Starting GPT analysis for task {task_id}")
         output_dir = f"results/{task_id}_gpt"
         frames_dir = f"{output_dir}/frames"
         
-        # Extract frames from video
+        # Extract frames from video using consistent processing from check.py
         loop = asyncio.get_event_loop()
         frames = await loop.run_in_executor(
             executor,
-            extract_frames_from_video,
+            extract_frames_with_consistent_processing,  # Use function from check.py
             video_path,
             frames_dir,
             fps
@@ -276,21 +252,27 @@ async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
         
         update_progress(task_id, 20)
         
-        # Initialize the improved GPT Vision Analyzer
+        # Initialize the GPT Vision Analyzer from check.py
         analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
         
         # Analyze each frame against historical charts
         results = []
         total_frames = len(frames)
         
+        logger.info(f"Analyzing {total_frames} frames against historical charts")
+        
         for i, frame_path in enumerate(frames):
             try:
-                # Run analysis for this frame
+                logger.info(f"🎬 Processing frame {i+1}/{total_frames}: {frame_path}")
+                
+                # Run analysis for this frame using check.py function
                 frame_results = await loop.run_in_executor(
                     executor,
                     analyzer.analyze_yearly_charts,
                     frame_path,
-                    "historical"
+                    "historical",
+                    3,  # max_retries
+                    True  # print_scores=True
                 )
                 
                 # Add frame info to results
@@ -304,10 +286,10 @@ async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
                 progress = 20 + int((i + 1) / total_frames * 75)
                 update_progress(task_id, progress)
                 
-                logger.info(f"Analyzed frame {i+1}/{total_frames} for task {task_id}")
+                logger.info(f"✅ Frame {i+1}/{total_frames} analysis complete. Best match: {frame_results['summary']['most_similar_year']} ({frame_results['summary']['max_similarity']:.3f})")
                 
             except Exception as e:
-                logger.error(f"Error analyzing frame {i}: {e}")
+                logger.error(f"❌ Error analyzing frame {i}: {e}")
                 continue
         
         # Compile final results
@@ -317,7 +299,7 @@ async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
             "video_path": video_path,
             "total_frames_analyzed": len(results),
             "fps": fps,
-            "analysis_type": "gpt_vision_improved",
+            "analysis_type": "gpt_vision_improved_from_check_py",
             "frames": results
         }
         
@@ -345,6 +327,8 @@ async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
                 {"year": year, "avg_similarity": score} 
                 for year, score in best_matches[:10]
             ]
+            
+            logger.info(f"🏆 Overall best matches: {final_results['best_overall_matches'][:3]}")
         
         # Save results
         results_file = f"results/{task_id}_gpt_vision_results.json"
@@ -352,10 +336,10 @@ async def run_gpt_analysis(video_path: str, task_id: str, fps: float):
             json.dump(final_results, f, indent=2)
         
         analysis_progress[task_id] = 100
-        logger.info(f"GPT analysis completed for {task_id}")
+        logger.info(f"✅ GPT analysis completed for {task_id}")
         
     except Exception as e:
-        logger.error(f"GPT analysis failed for {task_id}: {e}")
+        logger.error(f"❌ GPT analysis failed for {task_id}: {e}")
         analysis_progress[task_id] = -1  # Error state
 
 @app.get("/analysis-progress/{task_id}")
@@ -431,6 +415,8 @@ async def upload_2025_chart(file: UploadFile = File(...), user=Depends(admin_req
         with open(chart_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
+        logger.info(f"2025 chart uploaded: {chart_path}")
+        
         return JSONResponse({
             "status": "success", 
             "message": "2025 chart uploaded successfully"
@@ -471,19 +457,22 @@ async def run_yearly_analysis(
         raise HTTPException(status_code=500, detail=str(e))
 
 async def run_yearly_gpt_analysis(task_id: str):
-    """Run yearly GPT analysis in background using improved analyzer"""
+    """Run yearly GPT analysis in background using direct functions from check.py"""
     try:
-        # Use the improved GPT Vision Analyzer from check.py
+        logger.info(f"Starting yearly analysis with task ID: {task_id}")
+        
+        # Use the GPT Vision Analyzer from check.py
         analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
         loop = asyncio.get_event_loop()
         
-        # Use the improved analyze_yearly_charts method with retry logic
+        # Use the analyze_yearly_charts method from check.py with print_scores=True
         results = await loop.run_in_executor(
             executor,
             analyzer.analyze_yearly_charts,
             "uploads/2025.png",
             "historical",
-            3  # max_retries parameter
+            3,  # max_retries parameter
+            True  # print_scores=True to show scores in console
         )
         
         # Save results
@@ -491,10 +480,11 @@ async def run_yearly_gpt_analysis(task_id: str):
             json.dump(results, f, indent=2)
         
         analysis_progress[task_id] = 100
-        logger.info(f"Yearly GPT analysis completed with {results['successful_comparisons']} successful comparisons")
+        logger.info(f"✅ Yearly GPT analysis completed with {results['successful_comparisons']} successful comparisons")
+        logger.info(f"🏆 Most similar year: {results['summary']['most_similar_year']} with score {results['summary']['max_similarity']:.3f}")
         
     except Exception as e:
-        logger.error(f"Yearly GPT analysis failed: {e}")
+        logger.error(f"❌ Yearly GPT analysis failed: {e}")
         analysis_progress[task_id] = -1
 
 @app.get("/yearly-progress/{task_id}")
@@ -508,6 +498,124 @@ async def get_yearly_progress(task_id: str, user=Depends(get_current_user)):
         return {"status": "completed", "progress": 100}
     else:
         return {"status": "processing", "progress": progress}
+
+# =================== TEST ENDPOINTS FOR DEBUGGING ===================
+
+@app.post("/test-single-comparison")
+async def test_single_comparison(
+    year1: int = Form(...),
+    year2: int = Form(...),
+    user=Depends(get_current_user)
+):
+    """Test single comparison between two years for debugging"""
+    try:
+        if not OPENAI_API_KEY:
+            raise HTTPException(status_code=400, detail="OpenAI API key not configured")
+        
+        # Check if files exist
+        image1_path = f"historical/{year1}.png"
+        image2_path = f"historical/{year2}.png"
+        
+        if not os.path.exists(image1_path):
+            raise HTTPException(status_code=404, detail=f"Chart for {year1} not found")
+        if not os.path.exists(image2_path):
+            raise HTTPException(status_code=404, detail=f"Chart for {year2} not found")
+        
+        # Run comparison using function from check.py
+        analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
+        score, reasoning = analyzer.compare_charts(image1_path, image2_path)
+        
+        logger.info(f"Test comparison {year1} vs {year2}: Score = {score:.3f} ({score*100:.1f}%)")
+        print(f"📊 Test comparison {year1} vs {year2}: Score = {score:.3f} ({score*100:.1f}%)")
+        
+        return JSONResponse({
+            "status": "success",
+            "year1": year1,
+            "year2": year2,
+            "similarity_score": score,
+            "percentage": score * 100,
+            "reasoning": reasoning,
+            "image1_path": image1_path,
+            "image2_path": image2_path
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in test comparison: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/debug-files")
+async def debug_files(user=Depends(get_current_user)):
+    """Debug endpoint to check file availability"""
+    try:
+        debug_info = {
+            "current_working_directory": os.getcwd(),
+            "historical_directory_exists": os.path.exists("historical"),
+            "uploads_directory_exists": os.path.exists("uploads"),
+            "2025_chart_exists": os.path.exists("uploads/2025.png"),
+            "openai_api_configured": bool(OPENAI_API_KEY),
+            "historical_files": [],
+            "upload_files": []
+        }
+        
+        # List historical files
+        if os.path.exists("historical"):
+            for f in os.listdir("historical"):
+                if f.endswith(('.png', '.jpg', '.jpeg')):
+                    file_path = os.path.join("historical", f)
+                    debug_info["historical_files"].append({
+                        "filename": f,
+                        "size": os.path.getsize(file_path),
+                        "exists": os.path.exists(file_path)
+                    })
+        
+        # List upload files
+        if os.path.exists("uploads"):
+            for f in os.listdir("uploads"):
+                if f.endswith(('.png', '.jpg', '.jpeg')):
+                    file_path = os.path.join("uploads", f)
+                    debug_info["upload_files"].append({
+                        "filename": f,
+                        "size": os.path.getsize(file_path),
+                        "exists": os.path.exists(file_path)
+                    })
+        
+        return JSONResponse(debug_info)
+        
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/test-gpt-vision")
+async def test_gpt_vision(user=Depends(get_current_user)):
+    """Test GPT Vision API connectivity"""
+    try:
+        if not OPENAI_API_KEY:
+            return JSONResponse({
+                "status": "error",
+                "message": "OpenAI API key not configured"
+            })
+        
+        # Test with a simple request using check.py
+        analyzer = GPTVisionAnalyzer(OPENAI_API_KEY)
+        
+        # Check if we can initialize the client
+        test_result = {
+            "status": "success",
+            "message": "GPT Vision API client initialized successfully using check.py",
+            "api_key_length": len(OPENAI_API_KEY),
+            "api_key_prefix": OPENAI_API_KEY[:8] + "..." if len(OPENAI_API_KEY) > 8 else "short_key"
+        }
+        
+        return JSONResponse(test_result)
+        
+    except Exception as e:
+        logger.error(f"Error testing GPT Vision: {e}")
+        return JSONResponse({
+            "status": "error",
+            "message": f"GPT Vision test failed: {str(e)}"
+        })
+
+# =================== REMAINING ROUTES ===================
 
 @app.get("/logout")
 async def logout():
@@ -524,7 +632,9 @@ async def health_check():
         "status": "healthy",
         "timestamp": time.time(),
         "openai_configured": bool(OPENAI_API_KEY),
-        "gpt_vision_version": "improved"
+        "gpt_vision_version": "using_check_py_directly",
+        "current_directory": os.getcwd(),
+        "historical_charts_available": len([f for f in os.listdir("historical") if f.endswith('.png')]) if os.path.exists("historical") else 0
     }
 
 # Static file serving for results
@@ -558,8 +668,22 @@ async def serve_historical(filename: str, user=Depends(get_current_user)):
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
+# =================== MAIN ENTRY POINT ===================
+
 if __name__ == "__main__":
     import uvicorn
+    
+    # Check directories and files
+    print("🔍 Checking system setup...")
+    print(f"📁 Current directory: {os.getcwd()}")
+    print(f"📁 Historical directory exists: {os.path.exists('historical')}")
+    print(f"📁 Uploads directory exists: {os.path.exists('uploads')}")
+    
+    if os.path.exists("historical"):
+        historical_files = [f for f in os.listdir("historical") if f.endswith('.png')]
+        print(f"📊 Historical charts found: {len(historical_files)} files")
+        if historical_files:
+            print(f"   Files: {', '.join(sorted(historical_files))}")
     
     # Check if OpenAI API key is configured
     if not OPENAI_API_KEY:
@@ -567,10 +691,13 @@ if __name__ == "__main__":
         print("   GPT Vision analysis will not work without it")
     else:
         print("✅ OpenAI API key configured")
+        print(f"   Key length: {len(OPENAI_API_KEY)} characters")
     
-    print("🚀 Starting Chart Analysis System...")
+    print("\n🚀 Starting Chart Analysis System...")
     print("📊 Computer Vision: Available")
-    print("🤖 GPT Vision: Available (Improved Version)" if OPENAI_API_KEY else "🤖 GPT Vision: Disabled (no API key)")
+    print("🤖 GPT Vision: Available (Using check.py directly)" if OPENAI_API_KEY else "🤖 GPT Vision: Disabled (no API key)")
+    print("🔧 Debug endpoints: /debug-files, /test-gpt-vision, /test-single-comparison")
     print("🌐 Server will be available at: http://localhost:8000")
+    print("👤 Login credentials: admin/admin123 or user/user123")
     
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,5 +1,5 @@
 {
-  "timestamp": 1753838071.3572876,
+  "timestamp": 1753991084.1426213,
   "total_comparisons": 16,
   "successful_comparisons": 15,
   "analysis_type": "gpt_vision_yearly_improved",
@@ -15,112 +15,112 @@
       "similarity_score": 0.85,
       "analysis": "Similarity score: 0.850 (85.0%)",
       "reasoning": "Score: 85",
-      "timestamp": 1753838048.8291397
+      "timestamp": 1753991062.2483275
     },
     {
       "year": 2020,
       "similarity_score": 0.85,
       "analysis": "Similarity score: 0.850 (85.0%)",
       "reasoning": "Score: 85",
-      "timestamp": 1753838052.0727723
+      "timestamp": 1753991066.652352
+    },
+    {
+      "year": 2024,
+      "similarity_score": 0.75,
+      "analysis": "Similarity score: 0.750 (75.0%)",
+      "reasoning": "Score: 75",
+      "timestamp": 1753991082.6303408
     },
     {
       "year": 2009,
       "similarity_score": 0.65,
       "analysis": "Similarity score: 0.650 (65.0%)",
       "reasoning": "Score: 65",
-      "timestamp": 1753838009.700959
+      "timestamp": 1753991018.7390335
     },
     {
       "year": 2010,
       "similarity_score": 0.65,
       "analysis": "Similarity score: 0.650 (65.0%)",
       "reasoning": "Score: 65",
-      "timestamp": 1753838015.1130693
+      "timestamp": 1753991026.481923
     },
     {
       "year": 2011,
       "similarity_score": 0.65,
       "analysis": "Similarity score: 0.650 (65.0%)",
       "reasoning": "Score: 65",
-      "timestamp": 1753838018.767801
-    },
-    {
-      "year": 2024,
-      "similarity_score": 0.65,
-      "analysis": "Similarity score: 0.650 (65.0%)",
-      "reasoning": "Score: 65",
-      "timestamp": 1753838069.85394
+      "timestamp": 1753991030.9747744
     },
     {
       "year": 2017,
-      "similarity_score": 0.45,
-      "analysis": "Similarity score: 0.450 (45.0%)",
-      "reasoning": "Score: 45",
-      "timestamp": 1753838042.0794756
+      "similarity_score": 0.35,
+      "analysis": "Similarity score: 0.350 (35.0%)",
+      "reasoning": "Score: 35",
+      "timestamp": 1753991053.7444818
     },
     {
       "year": 2012,
       "similarity_score": 0.25,
       "analysis": "Similarity score: 0.250 (25.0%)",
       "reasoning": "Score: 25",
-      "timestamp": 1753838023.1190894
+      "timestamp": 1753991034.3984768
     },
     {
       "year": 2016,
       "similarity_score": 0.25,
       "analysis": "Similarity score: 0.250 (25.0%)",
       "reasoning": "Score: 25",
-      "timestamp": 1753838037.936365
+      "timestamp": 1753991049.909758
     },
     {
       "year": 2021,
       "similarity_score": 0.25,
       "analysis": "Similarity score: 0.250 (25.0%)",
       "reasoning": "Score: 25",
-      "timestamp": 1753838060.4150727
+      "timestamp": 1753991071.0183196
     },
     {
       "year": 2022,
       "similarity_score": 0.25,
       "analysis": "Similarity score: 0.250 (25.0%)",
       "reasoning": "Score: 25",
-      "timestamp": 1753838063.5098734
+      "timestamp": 1753991074.1298485
     },
     {
       "year": 2023,
       "similarity_score": 0.25,
       "analysis": "Similarity score: 0.250 (25.0%)",
       "reasoning": "Score: 25",
-      "timestamp": 1753838066.4759345
+      "timestamp": 1753991078.1202261
     },
     {
       "year": 2014,
       "similarity_score": 0.15,
       "analysis": "Similarity score: 0.150 (15.0%)",
       "reasoning": "Score: 15",
-      "timestamp": 1753838031.6167326
+      "timestamp": 1753991042.6006243
     },
     {
       "year": 2015,
       "similarity_score": 0.15,
       "analysis": "Similarity score: 0.150 (15.0%)",
       "reasoning": "Score: 15",
-      "timestamp": 1753838034.609183
+      "timestamp": 1753991046.694478
     },
     {
       "year": 2018,
       "similarity_score": 0.15,
       "analysis": "Similarity score: 0.150 (15.0%)",
       "reasoning": "Score: 15",
-      "timestamp": 1753838045.671463
+      "timestamp": 1753991058.4666224
     },
     {
       "year": 2013,
       "similarity_score": 0.0,
       "analysis": "Similarity score: 0.000 (0.0%)",
       "reasoning": "Score: 0",
-      "timestamp": 1753838027.5434382
+      "timestamp": 1753991038.6792796
     }
   ]
 }
